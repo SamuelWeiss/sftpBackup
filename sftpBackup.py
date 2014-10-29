@@ -14,8 +14,8 @@ import json
 
 
 #get information to connect to test server
-server = "50.168.87.85"
-username="Sam"
+server = raw_input("Please enter the server name or ip: ")
+username= raw_input("Please enter your username: ")
 passwd = getpass.getpass("Please enter your password: ")
 
 #list what's in our current directory
