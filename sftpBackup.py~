@@ -7,17 +7,11 @@
 ###############################################################################
 
 import sftpbackup_util as util
-import getpass
-import pysftp
 
-util.read_prefs()
-
-if util.prefs['server'] == "None":
-    util.prefs['server'] = raw_input("Please enter the server name or ip: ")
-if util.prefs['user'] == "None":
-    util.prefs['user'] = raw_input("Please enter your username: ")
-if util.prefs['pass'] == "None":
-    util.prefs['pass'] = getpass.getpass("Please enter your password: ")
+#get information to connect to test server
+server = raw_input("Please enter the server name or ip: ")
+username= raw_input("Please enter your username: ")
+passwd = getpass.getpass("Please enter your password: ")
 
 #open a connection to the server
 sftp = pysftp.Connection(server, username=username, password=passwd)
