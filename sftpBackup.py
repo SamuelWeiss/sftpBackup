@@ -9,27 +9,46 @@
 import sftpbackup_util as util
 import getpass
 import pysftp
+import pdb
 
-util.read_prefs()
+read_correctly = util.read_prefs()
 
-if util.prefs['server'] == "None":
-    util.prefs['server'] = raw_input("Please enter the server name or ip: ")
-if util.prefs['user'] == "None":
-    util.prefs['user'] = raw_input("Please enter your username: ")
-if util.prefs['pass'] == "None":
-    util.prefs['pass'] = getpass.getpass("Please enter your password: ")
+
+print "Welcome to sftpBackup, a folder backup system written in python"
+if read_correctly:
+    print "Your previous preferences have been read"
+else:
+    print "No preference file was detected or there was an error loading it"
+    print "You will now be asked to enter some information about the server you would like to sync with"
+
+
+
+util.get_unknown()
 
 #open a connection to the server
-sftp = pysftp.Connection(server, username=username, password=passwd)
+connected = False
+while not connected:
+    try:
+        sftp = pysftp.Connection(util.prefs['server'],
+                                 username=util.prefs['user'],
+                                 password=util.prefs['pass'])
+        connected = True
+    except Exception as e:
+        print "The details you entered were not correct, please try again"
+        for key in util.prefs.keys():
+            util.prefs[key] = "None"
+        util.get_unknown()
 
-if not sftp.isdir("Desktop/sftptesting"):
-    sftp.mkdir("Desktop/sftptesting")
-sftp.cd("Desktop/sftptesting");
 
-files = get_files_to_move(sftp, dir)
+if not sftp.isdir(util.prefs['destination']):
+    sftp.mkdir(util.prefs['destination'])
+sftp.cd(util.prefs['destination']);
+
+files = util.get_files_to_move(sftp, '.')
 
 #check if the file exists on the remote server and if it has been upated
 #this sync is 1 way, newer files will not be downloaded
+pdb.set_trace()
 for e in files:
     print e
     try:
@@ -39,5 +58,10 @@ for e in files:
         #attemped to move non directory with directory move
         sftp.put(e,e, preserve_mtime=True)
         
-print "success!" #hopefully
-
+print "Your files should have been moved successfully" #hopefully
+store = raw_input("Would you like to store your preferences? [Y/n] ")
+if store.lower() == 'y':
+    print "Please note, storing your password is VERY insecure"
+    store_pass = raw_input("Would you like to store your password? [Y/n] ")
+    util.store_prefs(store_pass.lower() == 'y')
+        
