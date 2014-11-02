@@ -23,49 +23,82 @@ prefs = {'max_size':1000000,
          'server':"None",
          'user':"None",
          'pass':"None",
-         'destination':'None'}
+         'destination':'None',
+         'folder':'None'}
+
+def backup_folder(connection_prefs):
+    get_unknown(connection_prefs)
+
+    #open a connection to the server
+    connected = False
+    while not connected:
+        try:
+            sftp = pysftp.Connection(connection_prefs['server'],
+                                     username=connection_prefs['user'],
+                                     password=connection_prefs['pass'])
+            connected = True
+        except Exception as e:
+            print "The details you entered were not correct, please try again"
+            for key in connection_prefs.keys():
+                connection_prefs[key] = "None"
+            get_unknown()
+
+
+
+        if not sftp.isdir(connection_prefs['destination']):
+            sftp.mkdir(connection_prefs['destination'])
+        sftp.cd(connection_prefs['destination']);
+                
+        files = get_files_to_move(sftp, connection_prefs['folder'])
+
+        #check if the file exists on the remote server and if it has been upated
+        #this sync is 1 way, newer files will not be downloaded
+        #pdb.set_trace()
+        for e in files:
+            print e
+            try:
+                sftp.put_r(e,e,preserve_mtime=True)
+            except Exception as error:
+                #attemped to move non directory with directory move
+                sftp.put(e,e, preserve_mtime=True)
 
 
 def read_prefs():
+    prefs = {'max_size':1000000,
+             'server':"None",
+             'user':"None",
+             'pass':"None",
+             'destination':'None',
+             'folder':'None'}
+
     try:
         f = open('sftpBackup_prefs', 'r')
     except Exception as e:
         log("No preference file found")
-        return False
+        return False, prefs
     temp = json.loads(f)
     if not 'max_size' in test:
         log("Error reading preference file, returning to defaults")
-        return False
+        return False, prefs
     prefs = temp
-    return True
+    return True, prefs
 
 def store_prefs(store_pass):
     if not store_pass:
         prefs['pass'] = "None"
     f = open('sftpBackup_prefs', 'w')
-    output = json.dumps(prefs)
+    output = json.dumps(prefs, f)
 
-def get_unknown():
-    for key in prefs.keys():
-        if prefs[key] == 'None':
+def get_unknown(dict=prefs):
+    for key in dict.keys():
+        if dict[key] == 'None':
             if key == 'pass':
-                prefs[key] = getpass.getpass("Please enter your password: ")
+                dict[key] = getpass.getpass("Please enter your password: ")
             else:
                 #maybe a way to print this pretty, can figure that out later
-                prefs[key] = raw_input("Please enter the " + key + " : ")
-            
-    '''
-    #not super pretty, we can do better in python
-    if util.prefs['server'] == "None":
-        util.prefs['server'] = raw_input("Please enter the server name or ip: ")
-    if util.prefs['user'] == "None":
-        util.prefs['user'] = raw_input("Please enter your username: ")
-    if prefs['pass'] == "None":
-        prefs['pass'] = getpass.getpass("Please enter your password: ")
-    if prefs['destination'] == "None":
-        util.prefs['destination'] = getpass.getpass("Please enter your password: ")
-    '''
-
+                dict[key] = raw_input("Please enter the " + key + " : ")
+        
+    
 def get_target_dir_clean(dir):
     if not os.path.isdir(dir):
         log("Attempted to scan a dir that did not exist \n " + dir)
@@ -78,6 +111,7 @@ def get_target_dir_clean(dir):
         if os.path.getsize(e) > prefs['max_size']:
             currentdir.remove(e)
             continue
+        e = dir + e
     return currentdir
 
 def get_files_to_move(sftp, dir):
