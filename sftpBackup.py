@@ -11,7 +11,6 @@ import sftpbackup_util as util
 import GUI_NAME_HERE as gui #TODO
 
 #standard lib
-import getpass
 import pysftp
 import pdb
 import os
