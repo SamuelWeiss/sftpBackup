@@ -107,6 +107,8 @@ def store_prefs(object):
     output = json.dumps(object, f)
 
 def get_unknown(dict=prefs):
+    #NO LONGER USED
+    #TODO: remove me!
     for key in dict.keys():
         if dict[key] == 'None':
             if key == 'pass':

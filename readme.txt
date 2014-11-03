@@ -5,6 +5,7 @@ Purpose:
 Create a python utility to sync files in a folder with a remote server.
 
 
+
 In progress:
 
 * Sync files once to a specified remote server.
