@@ -12,6 +12,7 @@ import os
 import pdb
 import json
 import sys
+import time
 
 #excluded_files = [
 #how to implement this, we want to exclude some formats, but also
@@ -26,51 +27,69 @@ prefs = {'max_size':1000000,
          'destination':'None',
          'folder':'None'}
 
-def backup_folder(connection_prefs):
-    get_unknown(connection_prefs)
-
+def backup_folder_simple(connection_prefs):
     #open a connection to the server
-    connected = False
-    while not connected:
-        try:
-            sftp = pysftp.Connection(connection_prefs['server'],
-                                     username=connection_prefs['user'],
-                                     password=connection_prefs['pass'])
-            connected = True
-        except Exception as e:
-            print "The details you entered were not correct, please try again"
-            for key in connection_prefs.keys():
-                connection_prefs[key] = "None"
-            get_unknown()
+    try:
+        sftp = pysftp.Connection(connection_prefs['server'],
+                                 username=connection_prefs['user'],
+                                 password=connection_prefs['pass'])
+    except Exception as e:
+        log("Something went wrong!")
+        log(e)
 
-
-
-        if not sftp.isdir(connection_prefs['destination']):
-            sftp.mkdir(connection_prefs['destination'])
-        sftp.cd(connection_prefs['destination']);
-                
-        files = get_files_to_move(sftp, connection_prefs['folder'])
+    if not sftp.isdir(connection_prefs['destination']):
+        sftp.mkdir(connection_prefs['destination'])
+    sftp.cd(connection_prefs['destination']);
+        
+    files = get_files_to_move(sftp, connection_prefs['folder'])
 
         #check if the file exists on the remote server and if it has been upated
         #this sync is 1 way, newer files will not be downloaded
         #pdb.set_trace()
-        for e in files:
-            print e
-            try:
-                sftp.put_r(e,e,preserve_mtime=True)
-            except Exception as error:
+    for e in files:
+        print e
+        try:
+            sftp.put_r(e,e,preserve_mtime=True)
+        except Exception as error:
                 #attemped to move non directory with directory move
-                sftp.put(e,e, preserve_mtime=True)
+            sftp.put(e,e, preserve_mtime=True)
+
+def backup_folder_history(connection_prefs):
+
+    #open a connection to the server
+    try:
+        sftp = pysftp.Connection(connection_prefs['server'],
+                                 username=connection_prefs['user'],
+                                 password=connection_prefs['pass'])
+    except Exception as e:
+        log("Something went wrong!")
+        log(e)
+        #made sure the base folder is there
+    if not sftp.isdir(connection_prefs['destination']):
+        sftp.mkdir(connection_prefs['destination'])
+    sftp.cd(connection_prefs['destination']);
+        
+        #make a folder with the time of the backup
+    temp_dest = connection_prefs['destination'] + "/" + time.asctime().replace(' ', '_')
+    if not sftp.isdir(temp_dest):
+        sftp.mkdir(temp_dest)
+    sftp.cd(temp_dest);
+
+    files = get_target_dir_clean(connection_prefs['folder'])
+
+        #check if the file exists on the remote server and if it has been upated
+        #this sync is 1 way, newer files will not be downloaded
+        #pdb.set_trace()
+    for e in files:
+        try:
+            sftp.put_r(e,e,preserve_mtime=True)
+        except Exception as error:
+                #attemped to move non directory with directory move
+            sftp.put(e,e, preserve_mtime=True)
 
 
 def read_prefs():
-    prefs = {'max_size':1000000,
-             'server':"None",
-             'user':"None",
-             'pass':"None",
-             'destination':'None',
-             'folder':'None'}
-
+    prefs = {}
     try:
         f = open('sftpBackup_prefs', 'r')
     except Exception as e:
@@ -83,11 +102,9 @@ def read_prefs():
     prefs = temp
     return True, prefs
 
-def store_prefs(store_pass):
-    if not store_pass:
-        prefs['pass'] = "None"
+def store_prefs(object):
     f = open('sftpBackup_prefs', 'w')
-    output = json.dumps(prefs, f)
+    output = json.dumps(object, f)
 
 def get_unknown(dict=prefs):
     for key in dict.keys():
