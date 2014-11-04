@@ -149,6 +149,6 @@ def start(child_connection):
 
         root.mainloop()
         
-
-start(0)
+if __name__ == '__main__':
+	start(0)
 
