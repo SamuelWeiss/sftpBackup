@@ -2,8 +2,12 @@ from Tkinter import *
 import ttk
 import multiprocessing
 import sftpbackup_util as util
+import tkFileDialog
+
+
 root = Tk()
 root.title("SFTP Backup")
+mainframe = ttk.Frame(root, padding="3 3 12 12")
 
 dictionary = {}
 
@@ -24,11 +28,15 @@ bool_var=False
 
 def submit():
         response = pack_response()
-        bool_var = (True)
+        bool_var = True
         return response
 
 def browse():
-        print "browsing"
+        filename = tkFileDialog.askopenfilename(parent=mainframe, title="Select Folder to Back Up")
+        root.withdraw()
+        folder_var = filename
+        folder_var['text'] = filename
+        print filename
 
 def pack_response():
         response = {#'pattern'   : pattern_var.get(),
@@ -74,7 +82,7 @@ def to_bytes(size):
 def start(child_connection):
 
 
-        mainframe = ttk.Frame(root, padding="3 3 12 12")
+        
         mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
         mainframe.columnconfigure(0, weight=1)
         mainframe.rowconfigure(0, weight=1)
