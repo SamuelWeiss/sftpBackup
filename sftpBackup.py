@@ -8,7 +8,7 @@
 
 #our files
 import sftpbackup_util as util
-import GUI_NAME_HERE as gui #TODO
+import gui
 
 #standard lib
 import pysftp
@@ -27,14 +27,14 @@ example_prefs = {'max_size':1000000,
                  'destination':'None',
                  'folder':'None'}
 example_schedule = [{'pattern':'repeating',
-                    'time':3600 #in seconds - ?
+                    'time':3600, #in seconds - ?
                     'function':util.backup_folder_history,
-                     'store':True
+                     'store':True,
                     'prefs':example_prefs},
                     {'pattern':'one-time',
                      'time':0,
                      'funciton':util.backup_folder_simple,
-                     'store':False
+                     'store':False,
                      'prefs':example_prefs
                      }]
 
@@ -42,11 +42,16 @@ valid_patterns = ['repeating', 'one-time']
 prefs_needed = ['max_size', 'server', 'user', 'pass', 'destination','folder']
 task_elements = ['pattern', 'time', 'function', 'prefs', 'store']
 
+def stand_in(var):
+    print "hurr durr"
+
 def main():
     parent_connection, child_connection = multiprocessing.Pipe()
     #launch the GUI first, we want to look responsive
-    interface = multiprocess.Process(target=gui.start, args=(child_connection))
+    interface = multiprocessing.Process(target=gui.start, args=(child_connection,))
+    #interface.start()
     #try to read preferences
+    print "still running"
     read_success, schedule = util.read_prefs()
     worker_list=[]
     to_store=[]
