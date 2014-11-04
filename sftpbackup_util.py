@@ -95,7 +95,12 @@ def read_prefs():
     except Exception as e:
         log("No preference file found")
         return False, prefs
-    temp = json.loads(f)
+    try:
+        temp = json.loads(f)
+    except Exception as e:
+        log("Error reading preference file")
+        log(e)
+        return False, prefs
     if not 'max_size' in test:
         log("Error reading preference file, returning to defaults")
         return False, prefs

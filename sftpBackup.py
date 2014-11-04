@@ -49,7 +49,7 @@ def main():
     parent_connection, child_connection = multiprocessing.Pipe()
     #launch the GUI first, we want to look responsive
     interface = multiprocessing.Process(target=gui.start, args=(child_connection,))
-    #interface.start()
+    interface.start()
     #try to read preferences
     print "still running"
     read_success, schedule = util.read_prefs()
