@@ -4,43 +4,87 @@ import multiprocessing
 import sftpbackup_util as util
 import tkFileDialog
 
+#------------------------------------------------------------------------------#
+# It is a limitation of Tk that functions attached to widgets as commands may
+# not be called with any arguements. Therefore, it is necessary for any
+# variable that must be accessed within these functions to have global scope.
+#------------------------------------------------------------------------------#
+
+#------------------------------------------------------------------------------#
+#                             global declarations
+#------------------------------------------------------------------------------#
 
 root = Tk()
-root.title("SFTP Backup")
 mainframe = ttk.Frame(root, padding="3 3 12 12")
 
-dictionary = {}
+connection = {}
 
-servername_var=StringVar()
-destination_var=StringVar()
-username_var=StringVar()
-password_var=StringVar()
-pattern_var=StringVar()
-function_var=StringVar()
-frequency_var=IntVar()
-frequency_units_var=StringVar()
-maxsize_var=StringVar()
-maxsize_units_var=StringVar()
-folder_var=StringVar()
-store_var = BooleanVar()
-bool_var = BooleanVar()
-bool_var=False
 
+servername_var      = StringVar() # the name of the server to which files will
+                                  # be backed up
+destination_var     = StringVar() # the folder within the server to which files
+                                  # will be backed up
+username_var        = StringVar() # the username for the server connection
+password_var        = StringVar() # the password for the server connection
+pattern_var         = StringVar() # the backup pattern
+function_var        = StringVar() # the backup function
+
+
+frequency_var       = IntVar()    # the frequency with which the files should
+                                  # be backed up
+frequency_units_var = StringVar() # the units for frequency_var
+
+
+maxsize_var         = StringVar() # the maximum total filesize the user wants
+                                  # allow to be backed up
+maxsize_units_var   = StringVar() # the units for maxsize_var
+
+store_var           = BooleanVar() # the store var
+
+folder_var          = StringVar() # the folder to be backed up
+folder = ttk.Label(mainframe, text=folder_var)
+
+#------------------------------------------------------------------------------#
+#                            auxiliary functions
+#------------------------------------------------------------------------------#
+
+#------------------------------------------------------------------------------#
+# submit():
+#
+# Packs a response in the correct format to send to the main thread, and sends
+# the response. Called when the user presses the submit button.
+#
+# return value: no return value
+#------------------------------------------------------------------------------#
 def submit():
         response = pack_response()
-        bool_var = True
-        return response
+        connection['connection'].send(response)
 
+#------------------------------------------------------------------------------#
+# browse():
+#
+# Opens a file dialogue (i.e. finder on apple products, explorer on windows
+# products) and allows the user to select which folder he or she wishes to back
+# up. Called when the user presses the browse button.
+#
+# return value: no return value
+#------------------------------------------------------------------------------#
 def browse():
-        filename = tkFileDialog.askopenfilename(parent=mainframe, title="Select Folder to Back Up")
-        root.withdraw()
+        filename = tkFileDialog.askdirectory(parent=mainframe, title="Select Folder to Back Up")
         folder_var = filename
-        folder_var['text'] = filename
-        print filename
+        folder.configure(text=filename)
 
+#------------------------------------------------------------------------------#
+# pack_response():
+#
+# Constructs a response to be sent to the main thread. Called by submit().
+#
+# return value: response, a dictionary containing the settings indicated by the
+#               user, to be sent to the main thread.
+#------------------------------------------------------------------------------#
 def pack_response():
         response = {#'pattern'   : pattern_var.get(),
-                    'pattern'    : "one-time",
+                    'pattern'   : "one-time",
                     'time'      : to_seconds(int(frequency_var.get())),
                     #'function'  : function_var.get(),
                     'function'  : util.backup_folder_simple,
@@ -48,7 +92,14 @@ def pack_response():
                     'prefs'     : pack_prefs() }
         return response
 
-
+#------------------------------------------------------------------------------#
+# pack_prefs():
+#
+# Constructs preferences to be stored in a response. Called by pack_response().
+#
+# return value: preferences, a dictionary containing settings indicated by the
+#               by the user, to be added to a response
+#------------------------------------------------------------------------------#
 def pack_prefs():
         preferences = {'maxsize': to_bytes(int(maxsize_var.get())),
                        'server' : servername_var.get(),
@@ -59,6 +110,16 @@ def pack_prefs():
 
         return preferences
 
+#------------------------------------------------------------------------------#
+# to_seconds(time):
+#
+# Converts time from whichever unit the user has indicated to seconds. Called
+# by pack_response().
+#
+# time: the value to be converted to seconds
+#
+# return value: time converted to seconds
+#------------------------------------------------------------------------------#
 def to_seconds(time):
         convert = {'seconds'    : 1,
                    'minutes'    : 60,
@@ -70,6 +131,16 @@ def to_seconds(time):
 
         return time/convert[frequency_units_var.get()]
 
+#------------------------------------------------------------------------------#
+# to_bytes(size):
+#
+# Converts size from whichever unit the user has indicated to bytes. Called by
+# pack_prefs().
+#
+# size: the value to be converted to bytes
+#
+# return value: size converted to bytes
+#------------------------------------------------------------------------------#
 def to_bytes(size):
         convert = {'bytes'      : 1,
                    'kilobytes'  : 1000,
@@ -79,16 +150,24 @@ def to_bytes(size):
 
         return int(maxsize_var.get())/convert[maxsize_units_var.get()]
 
+#------------------------------------------------------------------------------#
+# start(child_connection):
+#
+# Invoked by the main thread; generates the GUI.
+#
+# child_connection: the connection passed from the main thread -- a response
+#                   will be sent to this connection using
+#                   child_connection.send(response)
+#
+# return value: no return value
+#------------------------------------------------------------------------------#
+
 def start(child_connection):
-
-
-        
+        root.title("SFTP Backup")
+        connection['connection'] = child_connection
         mainframe.grid(column=0, row=0, sticky=(N, W, E, S))
         mainframe.columnconfigure(0, weight=1)
         mainframe.rowconfigure(0, weight=1)
-
-
-
 
         ttk.Label(mainframe, text="-- Server information --").grid(column=1, row=1)
 
@@ -132,7 +211,9 @@ def start(child_connection):
         maxsize_units['values'] = ('bytes', 'kilobytes', 'megabytes', 'gigabytes', 'terabytes')
 
         ttk.Label(mainframe, text="Folder to back up").grid(row=2, column=5)
-        ttk.Entry(mainframe, textvariable=folder_var).grid(row=3, column=5)
+        folder.grid(row=3, column=5)
+        folder.configure(text="")
+
         ttk.Button(mainframe, text="Browse", command=browse).grid(row=4, column=5)
 
         ttk.Label(mainframe, text="Valid?").grid(row=6, column=5, sticky=W)
@@ -148,7 +229,9 @@ def start(child_connection):
                 child.grid_configure(padx=5, pady=5)
 
         root.mainloop()
-        
+
+#------------------------------------------------------------------------------#
+# if gui.py is run directly, manually generate the GUI
+#------------------------------------------------------------------------------#
 if __name__ == '__main__':
 	start(0)
-
