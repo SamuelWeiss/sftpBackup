@@ -20,17 +20,38 @@ import multiprocessing
 
 
 #schedules should be in this form
+#-----------------------------------------------------------------------------#
+#
+# For a complete explanation of this data structure please see the util file
+#
+#-----------------------------------------------------------------------------#
 example_prefs = {'max_size':1000000,
                  'server':"None",
                  'user':"None",
                  'pass':"None",
                  'destination':'None',
                  'folder':'None'}
+
+#-----------------------------------------------------------------------------#
+# example_schedule
+#
+# This is an example of what a schedule object should contain. It is an array
+# containing individual backups, which each contain the following:
+#  * pattern: either repeating or one time, this is a string
+#  * time: indicated the number of seconds between backups to sleep for
+#  * function: stores the function that should be called when the backup is
+#      performed
+#  * store: a boolean value indicating if the preferences should be stored
+#  * prefs: a connection preference like the one given above
+#
+# TODO: make this an object - why did I not do that to start?
+#-----------------------------------------------------------------------------#
 example_schedule = [{'pattern':'repeating',
-                    'time':3600, #in seconds - ?
-                    'function':util.backup_folder_history,
+                     'time':3600, #in seconds - ?
+                     'function':util.backup_folder_history,
                      'store':True,
-                    'prefs':example_prefs},
+                     'prefs':example_prefs
+                     },
                     {'pattern':'one-time',
                      'time':0,
                      'funciton':util.backup_folder_simple,
@@ -38,20 +59,38 @@ example_schedule = [{'pattern':'repeating',
                      'prefs':example_prefs
                      }]
 
+#-----------------------------------------------------------------------------#
+#
+# These three variables contain all of the possible values for some other variables
+# They are used to make sure that the fields are valid.
+#
+#-----------------------------------------------------------------------------#
 valid_patterns = ['repeating', 'one-time']
 prefs_needed = ['max_size', 'server', 'user', 'pass', 'destination','folder']
 task_elements = ['pattern', 'time', 'function', 'prefs', 'store']
 
-def stand_in(var):
-    print "hurr durr"
-
+#-----------------------------------------------------------------------------#
+# main():
+#
+# A central process that manages all of the other processes that go on. There
+# are three types of processes that can run, a process that drives the Graphical
+# User Interface, which is called interface, worker processes, and this process,
+# which directs all of the other processes. We chose this structure because it
+# allows for our interface to close and be killed without interupting our
+# backup functionality, so backups will continue even if the user has quit the
+# interface. It also has led to a more modular design where each connection and
+# each backup is isolated in its own process, with limited communication with 
+# the main thread. The purpose of the main thread is to wait for input from the
+# interface and to start new processes when valid input has been given.
+# when the interface exit, this process is considered compelte and this function
+# will exit, storing preferences that have been marked accordingly.
+#-----------------------------------------------------------------------------#
 def main():
     parent_connection, child_connection = multiprocessing.Pipe()
     #launch the GUI first, we want to look responsive
     interface = multiprocessing.Process(target=gui.start, args=(child_connection,))
     interface.start()
     #try to read preferences
-    print "still running"
     read_success, schedule = util.read_prefs()
     worker_list=[]
     to_store=[]
@@ -69,6 +108,17 @@ def main():
             worker_list = schedule.append(temp)
     util.store_prefs(to_store)
 
+#-----------------------------------------------------------------------------#
+# confirm_schedule(testing):
+#
+# makes sure that a given schedule is valid. Called in main()
+#
+# testing: the schedule data that is to be tested
+#
+# returns: either a string containing an error message or None
+#
+# TODO: should this go in the util file?
+#-----------------------------------------------------------------------------#
 def confirm_schedule(testing):
     if testing.keys() != task_elements:
         return "task array was malformed"
@@ -98,7 +148,16 @@ def confirm_schedule(testing):
     
     return None
 
-
+#-----------------------------------------------------------------------------#
+# scheduler(schedule, worker_list):
+#
+# Creates processes to handle a given schedule and makes sure they run called by main()
+#
+# schedule: a list of schedules like the example above.
+# worker_list: either a list of workers who have already been started or nothing
+# 
+# returns: an array containing all of the processes
+#-----------------------------------------------------------------------------#
 def scheduler(schedule, worker_list=None):
     if not worker_list:
         worker_list = []
@@ -109,6 +168,17 @@ def scheduler(schedule, worker_list=None):
         #schedule.remove(e)
     return worker_list
 
+#-----------------------------------------------------------------------------#
+# worker(task):
+#
+# A simple function designed to handle a single task. It exists so that the
+# scheduler can simply spin up a thread of a single function, after which the
+# the process will be able to handle itself. Called by scheduler()
+#
+# task: a schedule data structure as seen above.
+#
+# returns: nothing
+#-----------------------------------------------------------------------------#
 def worker(task):
     if task['pattern'] == 'repeating' and task['time']>0:
         while True:
@@ -124,29 +194,3 @@ def worker(task):
         
 if __name__ == '__main__':
     main()
-
-
-#old stuff I didn't quite feel like throwing away yet
-    
-'''
-read_correctly, prefs = util.read_prefs()
-
-util.log(prefs)
-util.log(read_correctly)
-
-print "Welcome to sftpBackup, a folder backup system written in python"
-if read_correctly:
-    print "Your previous preferences have been read"
-else:
-    print "No preference file was detected or there was an error loading it"
-    print "You will now be asked to enter some information about the server you would like to sync with"
-
-util.backup_folder_simple(prefs)
-        
-print "Your files should have been moved successfully" #hopefully
-store = raw_input("Would you like to store your preferences? [Y/n] ")
-if store.lower() == 'y':
-    print "Please note, storing your password is VERY insecure"
-    store_pass = raw_input("Would you like to store your password? [Y/n] ")
-    util.store_prefs(store_pass.lower() == 'y')
-'''
