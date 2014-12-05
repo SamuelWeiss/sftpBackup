@@ -172,6 +172,7 @@ def read_prefs():
 def store_prefs(object):
     f = open('.sftpBackup_prefs', 'w')
     output = json.dumps(object, f)
+    f.write(output)
 
 #-----------------------------------------------------------------------------#
 # get_target_dir_clean(dir):
